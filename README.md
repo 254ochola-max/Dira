@@ -1,128 +1,180 @@
-# Dira
-Career Compass Agent is an AI-powered career assistant that recommends career paths, finds nearby internships, suggests course-related skills to improve, provides trusted learning platforms, and lists relevant job opportunities with estimated salaries to help students prepare for the job market.
-# Career Compass Agent ("Dira")
+# Dira: Career Compass Agent
 
-A command-line AI agent that acts as a career guide for Kenyan students and recent graduates. Tell Dira your course and the town you live in, and she suggests:
+Dira is an AI-powered career guide for students and recent graduates in Kenya. A student says **what course they are doing** and **which town they live in**, and Dira replies with a practical plan:
 
-- platforms to build your skills
-- jobs and job destinations to aim for
-- approximate salaries (KES per month)
-- live job listings and the nearest real employers
+- Platforms to build relevant skills
+- Jobs they can aim for, and where those jobs are
+- Approximate salaries (KES per month)
+- Live job listings and the nearest real employers to approach for internships or attachments
 
-Built with the Gemini API and plain Python functions as tools. The agent loop (think → act → observe) is written by hand in `agent.py`, so you can see exactly how an agent works.
+Dira is a tool-using agent. The LLM never makes up jobs or pay on its own. It asks our Python code to call tools, reads the results, and then writes the final plan.
 
-## Example
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Language | Python 3 |
+| LLM | Google Gemini (default `gemini-3.5-flash`, configurable) |
+| LLM SDK | `google-genai` (function calling / tool use) |
+| HTTP | `requests` |
+| Config | `python-dotenv` (`.env` file) |
+| Remote jobs | [Remotive API](https://remotive.com/api/remote-jobs) |
+| Kenyan job boards and web verification (optional) | [Tavily Search API](https://tavily.com) |
+| Nearby employers | [OpenStreetMap](https://www.openstreetmap.org) via the Overpass API |
+| Geocoding | Open-Meteo Geocoding API |
+| Extra exercise tool | REST Countries API |
+
+### Agent architecture
+
+Dira uses the classic **think → act → observe** loop:
+
+1. The student asks a question.
+2. Gemini decides which tool(s) to call.
+3. Our code runs the matching Python function and returns the result.
+4. Gemini reads the results and either calls more tools or writes the final answer.
+5. A safety limit (`MAX_STEPS = 8`) stops runaway loops.
+
+---
+
+## Features and Tools
+
+| Tool | Data source | Purpose |
+|---|---|---|
+| `get_learning_platforms` | Built-in knowledge base | Where to build skills for a course |
+| `get_career_paths` | Built-in knowledge base | Jobs and job destinations |
+| `get_salary_estimate` | Built-in knowledge base | Approximate monthly pay (Kenya, KES) |
+| `find_jobs` | Remotive + job-board links (+ Tavily for Kenyan boards) | Current job listings |
+| `find_nearby_employers` | OpenStreetMap (Overpass) | Closest real employers, nearest first |
+| `web_search` | Tavily (optional) | Verify pay, deadlines and news |
+
+The built-in knowledge base covers career fields such as software/IT, data and AI, cybersecurity, business and marketing, accounting and finance, and engineering. Courses are matched to a field by keyword.
+
+---
+
+## Project Structure
 
 ```
-You: I'm studying nursing in Nakuru. Where can I build my skills, what jobs can I get, what do they pay, and what is open near me?
+.
+├── agent.py               # Full agent loop (think -> act -> observe)
+├── agent_sdk.py           # Same agent, with the loop handled by the Gemini SDK
+├── tools.py               # The tools, knowledge base and tool declarations
+├── step1_ask_llm.py       # Demo: a plain LLM guessing about jobs and pay
+├── step2_one_tool.py      # Demo: one tool, one round trip done by hand
+├── exercise_solutions.py  # Extra tools: country facts, save plan, skills gap
+├── check_setup.py         # Verifies your environment and API keys
+├── requirements.txt       # Python dependencies
+└── .gitignore
 ```
 
-Dira calls her tools, then replies with a plan: skills to build, jobs to aim for, where the jobs are, approximate pay, what is open nearby, and your next 3 steps.
+---
 
-## Requirements
+## Getting Started
+
+### Prerequisites
 
 - Python 3.10 or newer
-- A free Gemini API key from <https://aistudio.google.com/apikey>
-- Optional: a free Tavily key from <https://app.tavily.com> (turns on `web_search` and live Kenyan job-board results)
+- A free [Gemini API key](https://aistudio.google.com/apikey)
+- *(Optional)* A free [Tavily API key](https://app.tavily.com) for `web_search` and live Kenyan job-board results
 
-## Setup
+### Installation
 
-**Windows (PowerShell)**
+```bash
+# 1. Clone the repository
+git clone https://github.com/254ochola-max/Dira.git
+cd Dira
 
-```powershell
-git clone https://github.com/<your-username>/career-compass-agent.git
-cd career-compass-agent\code
-
+# 2. (Recommended) create a virtual environment
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
-copy .env.example .env
+# 3. Install dependencies
+pip install -r requirements.txt
 ```
 
-**macOS / Linux**
+### Configuration
+
+Create a file named `.env` in the project root:
+
+```env
+GEMINI_API_KEY=your_gemini_key_here
+
+# Optional: enables web_search and live Kenyan job-board results
+TAVILY_API_KEY=
+
+# Optional: switch model if you hit free-tier daily limits
+GEMINI_MODEL=gemini-3.5-flash
+```
+
+> **Never commit your `.env` file.** It is already listed in `.gitignore`.
+
+### Verify your setup
 
 ```bash
-git clone https://github.com/<your-username>/career-compass-agent.git
-cd career-compass-agent/code
-
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -r requirements.txt
-
-cp .env.example .env
+python check_setup.py
 ```
 
-Then open `.env` and paste your `GEMINI_API_KEY`. Never share or commit this file.
-
-If PowerShell blocks the activate script, run this once in that terminal and try again:
-`Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned`
-
-## Run
+### Run the agent
 
 ```bash
-python check_setup.py     # confirms Python, packages, key and tools all work
-python agent.py           # start chatting with Dira (type "quit" to exit)
+python agent.py
 ```
 
-## Configuration (`.env`)
+Or run the version where the Gemini SDK manages the tool loop:
 
-| Variable | Required | Purpose |
-|---|---|---|
-| `GEMINI_API_KEY` | Yes | Powers the agent |
-| `TAVILY_API_KEY` | No | Enables `web_search` and live Kenyan job-board results |
-| `GEMINI_MODEL` | No | Switch model if you hit free-tier daily limits (default `gemini-3.5-flash`) |
-
-## Project layout
-
-```
-code/
-  step1_ask_llm.py        a plain LLM call: watch it guess about live jobs and pay
-  step2_one_tool.py       one tool, one round trip done by hand
-  tools.py                the tools and the tool menu given to the model
-  agent.py                the full agent loop (think -> act -> observe)
-  agent_sdk.py            the same agent, with the loop run by the Gemini SDK
-  exercise_solutions.py   extra tools: country facts, save plan, skills gap
-  check_setup.py          setup checker
-  requirements.txt
-  .env.example
+```bash
+python agent_sdk.py
 ```
 
-Suggested order for learning: `step1_ask_llm.py` → `step2_one_tool.py` → `agent.py` → `agent_sdk.py`.
+### Example prompt
 
-## The tools
+```
+I'm studying nursing in Nakuru. Where can I build my skills, what jobs can I get,
+what do they pay, and what is open near me?
+```
 
-| Tool | Source | What it does |
-|---|---|---|
-| `get_learning_platforms` | built-in list | where to build skills |
-| `get_career_paths` | built-in list | jobs and job destinations |
-| `get_salary_estimate` | built-in list | approximate pay (Kenya, KES) |
-| `find_jobs` | Remotive + job-board links | current listings (Kenyan boards too, with Tavily) |
-| `find_nearby_employers` | OpenStreetMap | closest real employers, nearest first |
-| `web_search` | Tavily (optional) | verify pay, deadlines, news |
+Dira answers with these sections: **Skills to build, Jobs you can aim for, Where the jobs are, Approximate pay, Open now and nearby, Your next 3 steps.**
 
-### Adding your own tool
+---
 
-1. Write the Python function in `tools.py`.
-2. Add its description to `TOOL_DECLARATIONS`.
-3. Add `"name": function` to `TOOL_FUNCTIONS`.
+## Learning Path
 
-Nothing in `agent.py` needs to change. See `exercise_solutions.py` for examples.
+The repo doubles as a small tutorial on building agents:
 
-## Troubleshooting
+1. `step1_ask_llm.py`: see how a plain LLM guesses about live jobs and pay.
+2. `step2_one_tool.py`: give the LLM one tool and run one round trip by hand.
+3. `agent.py`: the complete multi-tool agent loop.
+4. `agent_sdk.py`: the same agent using the SDK's built-in loop.
+5. `exercise_solutions.py`: extra tools to extend the agent.
 
-- **`ModuleNotFoundError: No module named 'dotenv'`**: the packages are not installed in the Python you are running. Activate your virtual environment and run `python -m pip install -r requirements.txt`. In VS Code, pick the same environment with *Python: Select Interpreter*.
-- **`KeyError: 'GEMINI_API_KEY'`**: `.env` is missing or empty. Copy `.env.example` to `.env` inside the `code` folder and add your key.
-- **Rate limit / 429 errors**: you hit the free-tier limit. Wait a minute, or set a different `GEMINI_MODEL`.
+---
 
-## Honest limits
+## Limitations
 
-- Salary bands in `tools.py` are rough starter numbers, not official statistics. The agent is told to call them approximate. Replace them with data you trust.
-- Platform links and job-board search URLs should be spot-checked before showing this to a class, because websites change.
-- Nearby employers come from OpenStreetMap volunteers. They are places to approach, not confirmed vacancies.
-- Remote jobs come from Remotive (please keep the link back to them).
-- Live Kenyan job-board results need the free Tavily key. Without it the agent gives search links instead.
+- **Salary bands are rough starter numbers**, not official statistics. Replace them with data you trust.
+- **Platform links and job-board URLs can change.** Spot-check them before sharing.
+- **Nearby employers come from OpenStreetMap volunteers.** They are places to approach, not confirmed vacancies.
+- **Remote jobs come from Remotive**; please keep the link back to them.
+- **Live Kenyan job-board results need a Tavily key.** Without it, the agent gives search links instead.
 
-## License
+---
 
-Add a license of your choice (for example MIT) before making the repository public.
+## Contributing
+
+Contributions are welcome. A great place to start is adding a new career field to the `FIELDS` knowledge base in `tools.py`, which upgrades the whole agent at once.
+
+1. Fork the repo
+2. Create a feature branch (`git checkout -b feature/new-field`)
+3. Commit your changes
+4. Open a pull request
+
+---
+
+## Acknowledgements
+
+- [Google Gemini](https://ai.google.dev) for the LLM
+- [Remotive](https://remotive.com) for remote job listings
+- [OpenStreetMap](https://www.openstreetmap.org) contributors for employer data
+- [Tavily](https://tavily.com) for web search
+- [Open-Meteo](https://open-meteo.com) for geocoding
