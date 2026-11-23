@@ -1,15 +1,24 @@
 # Dira: Career Compass Agent
 
-Dira is an AI-powered career guide for students and recent graduates in Kenya. A student says **what course they are doing** and **which town they live in**, and Dira replies with a practical plan:
+[![Python](https://img.shields.io/badge/Python-100%25-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-Unspecified-lightgrey)](#)
 
-- Platforms to build relevant skills
-- Jobs they can aim for, and where those jobs are
-- Approximate salaries (KES per month)
-- Live job listings and the nearest real employers to approach for internships or attachments
+Dira is an AI-powered career assistant for students and recent graduates in Kenya. Given a student's course and location, Dira creates a practical plan that highlights:
 
-Dira is a tool-using agent. The LLM never makes up jobs or pay on its own. It asks our Python code to call tools, reads the results, and then writes the final plan.
+- Platforms and resources for building relevant skills
+- Suitable career paths and job destinations
+- Estimated monthly salaries in Kenyan shillings (KES)
+- Live job opportunities and nearby real employers for internships or attachments
 
----
+The LLM never invents jobs or salaries. It asks Python code to call tools, reads the results, and writes the final plan. A safety limit (`MAX_STEPS = 8`) prevents runaway tool loops.
+
+## Demo
+
+The screenshots below show Dira exploring career options, jobs, and nearby opportunities.
+
+| Career guidance | Job opportunities | Nearby employers |
+|---|---|---|
+| ![Dira career guidance demo](docs/images/demo.png) | ![Dira job opportunities demo](docs/images/1demo..png) | ![Dira nearby employers demo](docs/images/2demo..png) |
 
 ## Tech Stack
 
@@ -26,15 +35,15 @@ Dira is a tool-using agent. The LLM never makes up jobs or pay on its own. It as
 | Geocoding | Open-Meteo Geocoding API |
 | Extra exercise tool | REST Countries API |
 
-### Agent architecture
+### Agent Architecture
 
 Dira uses the classic **think → act → observe** loop:
 
 1. The student asks a question.
 2. Gemini decides which tool(s) to call.
-3. Our code runs the matching Python function and returns the result.
+3. Python runs the matching function and returns the result.
 4. Gemini reads the results and either calls more tools or writes the final answer.
-5. A safety limit (`MAX_STEPS = 8`) stops runaway loops.
+5. The safety limit (`MAX_STEPS = 8`) stops runaway loops.
 
 ---
 
@@ -43,32 +52,28 @@ Dira uses the classic **think → act → observe** loop:
 | Tool | Data source | Purpose |
 |---|---|---|
 | `get_learning_platforms` | Built-in knowledge base | Where to build skills for a course |
-| `get_career_paths` | Built-in knowledge base | Jobs and job destinations |
+| `get_career_paths` | Built-in knowledge base | Jobs and career destinations |
 | `get_salary_estimate` | Built-in knowledge base | Approximate monthly pay (Kenya, KES) |
-| `find_jobs` | Remotive + job-board links (+ Tavily for Kenyan boards) | Current job listings |
+| `find_jobs` | Remotive + job-board links (+ Tavily) | Current job listings |
 | `find_nearby_employers` | OpenStreetMap (Overpass) | Closest real employers, nearest first |
-| `web_search` | Tavily (optional) | Verify pay, deadlines and news |
+| `web_search` | Tavily (optional) | Verify pay, deadlines, and news |
 
-The built-in knowledge base covers career fields such as software/IT, data and AI, cybersecurity, business and marketing, accounting and finance, and engineering. Courses are matched to a field by keyword.
-
----
+The built-in knowledge base covers career fields such as software/IT, data and AI, cybersecurity, business and marketing, accounting and finance, and engineering. Courses are matched to fields by keyword.
 
 ## Project Structure
 
-```
-.
-├── agent.py               # Full agent loop (think -> act -> observe)
-├── agent_sdk.py           # Same agent, with the loop handled by the Gemini SDK
-├── tools.py               # The tools, knowledge base and tool declarations
-├── step1_ask_llm.py       # Demo: a plain LLM guessing about jobs and pay
-├── step2_one_tool.py      # Demo: one tool, one round trip done by hand
-├── exercise_solutions.py  # Extra tools: country facts, save plan, skills gap
-├── check_setup.py         # Verifies your environment and API keys
-├── requirements.txt       # Python dependencies
+```text
+├── agent.py                 # Full agent loop (think → act → observe)
+├── agent_sdk.py             # Same agent using Gemini SDK tool loop
+├── tools.py                 # Tools, knowledge base, and declarations
+├── step1_ask_llm.py         # Demo: a plain LLM guessing about jobs and pay
+├── step2_one_tool.py        # Demo: one tool, one round trip
+├── exercise_solutions.py    # Extra tools: country facts, saved plans, skills gaps
+├── check_setup.py           # Verify environment and API keys
+├── requirements.txt         # Python dependencies
+├── docs/images/             # README screenshots and demo images
 └── .gitignore
 ```
-
----
 
 ## Getting Started
 
@@ -81,21 +86,20 @@ The built-in knowledge base covers career fields such as software/IT, data and A
 ### Installation
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/254ochola-max/Dira.git
 cd Dira
 
-# 2. (Recommended) create a virtual environment
+# Recommended: create a virtual environment
 python -m venv .venv
-source .venv/bin/activate        # Windows: .venv\Scripts\activate
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
 
-# 3. Install dependencies
+# Install dependencies
 pip install -r requirements.txt
 ```
 
 ### Configuration
 
-Create a file named `.env` in the project root:
+Create `.env` in the project root:
 
 ```env
 GEMINI_API_KEY=your_gemini_key_here
@@ -103,75 +107,67 @@ GEMINI_API_KEY=your_gemini_key_here
 # Optional: enables web_search and live Kenyan job-board results
 TAVILY_API_KEY=
 
-# Optional: switch model if you hit free-tier daily limits
+# Optional: switches models if you hit free-tier limits
 GEMINI_MODEL=gemini-3.5-flash
 ```
 
 > **Never commit your `.env` file.** It is already listed in `.gitignore`.
 
-### Verify your setup
+### Verify Your Setup
 
 ```bash
 python check_setup.py
 ```
 
-### Run the agent
+### Run Dira
 
 ```bash
 python agent.py
 ```
 
-Or run the version where the Gemini SDK manages the tool loop:
+For the Gemini SDK-managed tool loop:
 
 ```bash
 python agent_sdk.py
 ```
 
-### Example prompt
+### Example Prompt
 
-```
+```text
 I'm studying nursing in Nakuru. Where can I build my skills, what jobs can I get,
 what do they pay, and what is open near me?
 ```
 
-Dira answers with these sections: **Skills to build, Jobs you can aim for, Where the jobs are, Approximate pay, Open now and nearby, Your next 3 steps.**
-
----
+Dira organizes answers into: **Skills to build, Jobs to aim for, Where the jobs are, Approximate pay, Opportunities open now, and Your next 3 steps.**
 
 ## Learning Path
 
-The repo doubles as a small tutorial on building agents:
+The repository doubles as a small tutorial for building agents:
 
 1. `step1_ask_llm.py`: see how a plain LLM guesses about live jobs and pay.
-2. `step2_one_tool.py`: give the LLM one tool and run one round trip by hand.
-3. `agent.py`: the complete multi-tool agent loop.
-4. `agent_sdk.py`: the same agent using the SDK's built-in loop.
-5. `exercise_solutions.py`: extra tools to extend the agent.
-
----
+2. `step2_one_tool.py`: give the LLM one tool and complete one round trip.
+3. `agent.py`: build the complete multi-tool agent loop.
+4. `agent_sdk.py`: implement the same agent with the Gemini SDK's built-in loop.
+5. `exercise_solutions.py`: add extra tools and extend the agent.
 
 ## Limitations
 
-- **Salary bands are rough starter numbers**, not official statistics. Replace them with data you trust.
-- **Platform links and job-board URLs can change.** Spot-check them before sharing.
+- **Salary bands are starter estimates**, not official statistics. Replace them with trusted, current data before making decisions.
+- **Platforms and job-board URLs can change.** Spot-check links before sharing.
 - **Nearby employers come from OpenStreetMap volunteers.** They are places to approach, not confirmed vacancies.
-- **Remote jobs come from Remotive**; please keep the link back to them.
-- **Live Kenyan job-board results need a Tavily key.** Without it, the agent gives search links instead.
-
----
+- **Remote jobs come from Remotive**; keep the source link with every result.
+- **Live Kenyan job-board results require a Tavily key.** Without it, Dira provides general search links instead.
 
 ## Contributing
 
-Contributions are welcome. A great place to start is adding a new career field to the `FIELDS` knowledge base in `tools.py`, which upgrades the whole agent at once.
+Contributions are welcome. A good place to start is to add a new career field to the `FIELDS` knowledge base in `tools.py`, which upgrades the whole agent at once.
 
-1. Fork the repo
+1. Fork the repository
 2. Create a feature branch (`git checkout -b feature/new-field`)
 3. Commit your changes
 4. Open a pull request
 
----
-
-## Acknowledgements
+## Acknowledgments
 
 - [Google Gemini](https://ai.google.dev) for the LLM
 - [Remotive](https://remotive.com) for remote job listings
